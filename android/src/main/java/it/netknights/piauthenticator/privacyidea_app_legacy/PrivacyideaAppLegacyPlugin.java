@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -32,21 +33,53 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
 
     private Util util;
     private SecretKeyWrapper secretKeyWrapper;
+    private Context applicationContext;
+
+//    @Override
+//    public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
+//        channel = new MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), METHOD_CHANNEL_ID);
+//        channel.setMethodCallHandler(this);
+//
+//        Context context = flutterPluginBinding.getApplicationContext();
+//        try {
+//            secretKeyWrapper = new SecretKeyWrapper(context);
+//            util = new Util(secretKeyWrapper, context.getFilesDir().getAbsolutePath());
+//        } catch (GeneralSecurityException e) {
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     @Override
-    public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-        channel = new MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), METHOD_CHANNEL_ID);
+    public void onAttachedToEngine(FlutterPluginBinding binding) {
+        onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
+    }
+
+    private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
+        this.applicationContext = applicationContext;
+        channel = new MethodChannel(messenger, METHOD_CHANNEL_ID);
+//        eventChannel = new EventChannel(messenger, "plugins.flutter.io/charging");
+//        eventChannel.setStreamHandler(this); // TODO What is this good for?
         channel.setMethodCallHandler(this);
 
-        Context context = flutterPluginBinding.getApplicationContext();
         try {
-            secretKeyWrapper = new SecretKeyWrapper(context);
-            util = new Util(secretKeyWrapper, context.getFilesDir().getAbsolutePath());
+            secretKeyWrapper = new SecretKeyWrapper(applicationContext);
+            util = new Util(secretKeyWrapper, applicationContext.getFilesDir().getAbsolutePath());
         } catch (GeneralSecurityException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void onDetachedFromEngine(FlutterPluginBinding binding) {
+        applicationContext = null;
+        channel.setMethodCallHandler(null);
+        channel = null;
+//        eventChannel.setStreamHandler(null);
+//        eventChannel = null;
     }
 
     // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -84,10 +117,5 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
             default:
                 result.notImplemented();
         }
-    }
-
-    @Override
-    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        channel.setMethodCallHandler(null);
     }
 }
