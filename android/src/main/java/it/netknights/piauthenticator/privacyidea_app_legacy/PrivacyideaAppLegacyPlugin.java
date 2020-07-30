@@ -19,8 +19,11 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     /// This local reference serves to register the plugin with the Flutter Engine and unregister it
     /// when the Flutter Engine is detached from the Activity
     private MethodChannel channel;
-    static final String METHOD_CHANNEL_ID = "it.netknights.piauthenticator.legacy";
+    private static final String METHOD_CHANNEL_ID = "it.netknights.piauthenticator.legacy";
 
+    private static final String METHOD_SIGN = "sign";
+    private static final String METHOD_VERIFY = "verify";
+    private static final String METHOD_LOAD_ALL_TOKENS = "load_all_tokens";
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -38,16 +41,22 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     // depending on the user's project. onAttachedToEngine or registerWith must both be defined
     // in the same class.
     public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "privacyidea_app_legacy");
+        final MethodChannel channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_ID);
         channel.setMethodCallHandler(new PrivacyideaAppLegacyPlugin());
     }
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-        if (call.method.equals("getPlatformVersion")) {
-            result.success("Android " + android.os.Build.VERSION.RELEASE);
-        } else {
-            result.notImplemented();
+
+        switch (call.method) {
+            case "getPlatformVersion":
+                result.success("Android " + android.os.Build.VERSION.RELEASE);
+                break;
+            case METHOD_SIGN: // TODO implement
+            case METHOD_VERIFY: // TODO implement
+            case METHOD_LOAD_ALL_TOKENS: // TODO implement
+            default:
+                result.notImplemented();
         }
     }
 
