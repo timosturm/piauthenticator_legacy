@@ -1,6 +1,11 @@
 package it.netknights.piauthenticator.privacyidea_app_legacy;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.MethodCall;
@@ -25,10 +30,23 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     private static final String METHOD_VERIFY = "verify";
     private static final String METHOD_LOAD_ALL_TOKENS = "load_all_tokens";
 
+    private Util util;
+    private SecretKeyWrapper secretKeyWrapper;
+
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         channel = new MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), METHOD_CHANNEL_ID);
         channel.setMethodCallHandler(this);
+
+        Context context = flutterPluginBinding.getApplicationContext();
+        try {
+            secretKeyWrapper = new SecretKeyWrapper(context);
+            util = new Util(secretKeyWrapper, context.getFilesDir().getAbsolutePath());
+        } catch (GeneralSecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -54,7 +72,15 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
                 break;
             case METHOD_SIGN: // TODO implement
             case METHOD_VERIFY: // TODO implement
-            case METHOD_LOAD_ALL_TOKENS: // TODO implement
+            case METHOD_LOAD_ALL_TOKENS:
+                try {
+                    result.success(util.loadTokens());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (GeneralSecurityException e) {
+                    e.printStackTrace();
+                }
+                break;
             default:
                 result.notImplemented();
         }
