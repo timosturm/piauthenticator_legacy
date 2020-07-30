@@ -28,6 +28,6 @@ class Legacy {
       await _channel
           .invokeMethod(METHOD_VERIFY, [serial, signedData, signature]);
 
-  static Future<String> loadAllTokens(int a) async =>
+  static Future<String> loadAllTokens() async =>
       await _channel.invokeMethod(METHOD_LOAD_ALL_TOKENS);
 }
