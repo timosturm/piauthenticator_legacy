@@ -58,7 +58,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
 
-        System.out.println("ONATTACHEDTOENGINE:");
+        Util.logprint("ONATTACHEDTOENGINE:");
 
         this.applicationContext = applicationContext;
         channel = new MethodChannel(messenger, METHOD_CHANNEL_ID);
@@ -67,10 +67,10 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
         channel.setMethodCallHandler(this);
 
         try {
-            System.out.println("SETTUP:");
+            Util.logprint("SETTUP:");
             secretKeyWrapper = new SecretKeyWrapper(applicationContext);
             util = new Util(secretKeyWrapper, applicationContext.getFilesDir().getAbsolutePath());
-            System.out.println("UTIL: " + util + "\nSKW: " + secretKeyWrapper);
+            Util.logprint("UTIL: " + util + "\nSKW: " + secretKeyWrapper);
         } catch (GeneralSecurityException e) {
             e.printStackTrace();
         } catch (IOException e) {
