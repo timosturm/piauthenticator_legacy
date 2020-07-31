@@ -35,30 +35,12 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     private SecretKeyWrapper secretKeyWrapper;
     private Context applicationContext;
 
-//    @Override
-//    public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-//        channel = new MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), METHOD_CHANNEL_ID);
-//        channel.setMethodCallHandler(this);
-//
-//        Context context = flutterPluginBinding.getApplicationContext();
-//        try {
-//            secretKeyWrapper = new SecretKeyWrapper(context);
-//            util = new Util(secretKeyWrapper, context.getFilesDir().getAbsolutePath());
-//        } catch (GeneralSecurityException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
         onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
     }
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
-
-        Util.logprint("ONATTACHEDTOENGINE:");
 
         this.applicationContext = applicationContext;
         channel = new MethodChannel(messenger, METHOD_CHANNEL_ID);
@@ -67,10 +49,8 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
         channel.setMethodCallHandler(this);
 
         try {
-            Util.logprint("SETTUP:");
             secretKeyWrapper = new SecretKeyWrapper(applicationContext);
             util = new Util(secretKeyWrapper, applicationContext.getFilesDir().getAbsolutePath());
-            Util.logprint("UTIL: " + util + "\nSKW: " + secretKeyWrapper);
         } catch (GeneralSecurityException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -97,8 +77,10 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     // depending on the user's project. onAttachedToEngine or registerWith must both be defined
     // in the same class.
     public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_ID);
-        channel.setMethodCallHandler(new PrivacyideaAppLegacyPlugin());
+//        final MethodChannel channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_ID);
+//        channel.setMethodCallHandler(new PrivacyideaAppLegacyPlugin());
+        final PrivacyideaAppLegacyPlugin instance = new PrivacyideaAppLegacyPlugin();
+        instance.onAttachedToEngine(registrar.context(), registrar.messenger());
     }
 
     @Override
