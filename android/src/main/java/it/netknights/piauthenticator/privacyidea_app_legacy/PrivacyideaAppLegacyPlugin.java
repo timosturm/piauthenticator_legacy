@@ -98,6 +98,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
                 } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | IOException | CertificateException | UnrecoverableEntryException | KeyStoreException e) {
                     e.printStackTrace();
                 }
+                break;
 
 
             case METHOD_VERIFY: // TODO implement
@@ -111,6 +112,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
                 } catch (GeneralSecurityException | IOException e) {
                     e.printStackTrace();
                 }
+                break;
 
             case METHOD_LOAD_ALL_TOKENS:
                 try {
@@ -119,6 +121,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
                     e.printStackTrace();
                 }
                 break;
+
             case METHOD_LOAD_FIREBASE_CONFIG:
                 try {
                     result.success(util.loadFirebaseConfig());
@@ -126,6 +129,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
                     e.printStackTrace();
                 }
                 break;
+
             default:
                 result.notImplemented();
         }
