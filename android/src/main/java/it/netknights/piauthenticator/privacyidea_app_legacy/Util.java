@@ -60,6 +60,7 @@ import javax.crypto.spec.GCMParameterSpec;
 
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.CRYPT_ALGORITHM;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.DATAFILE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.FB_CONFIG_FILE;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.IV_LENGTH;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.KEYFILE;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PUBKEYFILE;
@@ -93,139 +94,6 @@ public class Util {
         byte[] data = loadDataFromFile(DATAFILE);
         return new String(data);
     }
-
-    // TODO Rewrite
-//    private Token makeTokenFromJSON(JSONObject o) throws JSONException {
-//        //Log.d("LOAD TOKEN FROM: ", o.toString());
-//
-//        // when no serial is found (for "old" data) it is set to the label
-//        String serial;
-//        String label = o.getString(LABEL);
-//        try {
-//            serial = o.getString(SERIAL);
-//        } catch (JSONException e) {
-//            serial = label;
-//        }
-//        String type = o.getString(TYPE);
-//
-//        if (type.equals(PUSH)) {
-//            Token t = new Token(serial, label);
-//            t.state = State.valueOf(o.getString(ROLLOUT_STATE));
-//            if (t.state.equals(UNFINISHED)) {
-//                t.rollout_url = o.getString(URL);
-//                t.enrollment_credential = o.getString(ENROLLMENT_CRED);
-//                t.sslVerify = o.getBoolean(SSL_VERIFY);
-//                try {
-//                    t.rollout_expiration = dateFormat.parse(o.getString(ROLLOUT_EXPIRATION));
-//                } catch (ParseException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//            // Check for pending Authentication Requests
-//            try {
-//                String pendingAuths = o.getString(PENDING_AUTHS);
-//                t.setPendingAuths(new Gson().fromJson(pendingAuths, new TypeToken<ArrayList<PushAuthRequest>>() {
-//                }.getType()));
-//            } catch (JSONException e) {
-//                // there were none and that's ok
-//            }
-//            return t;
-//        }
-//
-//        Token tmp = new Token(new Base32().decode(o.getString(SECRET)), serial, label,
-//                type, o.getInt(DIGITS));
-//
-//        tmp.setAlgorithm(o.getString(ALGORITHM));
-//        if (o.getString(TYPE).equals(HOTP)) {
-//            tmp.setCounter(o.getInt(COUNTER));
-//        }
-//        if (o.getString(TYPE).equals(TOTP)) {
-//            tmp.setPeriod(o.getInt(PERIOD));
-//        }
-//        if (o.optBoolean(WITHPIN, false)) {
-//            tmp.setWithPIN(true);
-//            tmp.setPin(o.getString(PIN));
-//            tmp.setLocked(true);
-//        }
-//        if (o.optBoolean(TAPTOSHOW, false)) {
-//            tmp.setWithTapToShow(true);
-//        }
-//        if (o.optBoolean(PERSISTENT)) {
-//            tmp.setPersistent(true);
-//        }
-//
-//        return tmp;
-//    }
-
-//    private JSONObject makeJSONfromToken(Token t) throws JSONException {
-//        JSONObject o = new JSONObject();
-//
-//        o.put(SERIAL, t.getSerial());
-//        o.put(LABEL, t.getLabel());
-//        o.put(TYPE, t.getType());
-//
-//        if (t.getType().equals(PUSH)) {
-//            State state = t.state;
-//            if (state.equals(AUTHENTICATING)) {
-//                // Don't save authenticating state, has to be finished
-//                // Unfinished token cannot authenticate
-//                state = FINISHED;
-//            }
-//            o.put(ROLLOUT_STATE, state);
-//            // If the rollout is not finished yet, save the data necessary to complete it
-//            if (t.state.equals(UNFINISHED)) {
-//                o.put(URL, t.rollout_url);
-//                o.put(ROLLOUT_EXPIRATION, dateFormat.format(t.rollout_expiration));
-//                o.put(ENROLLMENT_CRED, t.enrollment_credential);
-//                o.put(SSL_VERIFY, t.sslVerify);
-//            }
-//
-//            // Check for pending Authentication Requests
-//            if (!t.getPendingAuths().isEmpty()) {
-//                String pendingAuths = new Gson().toJson(t.getPendingAuths());
-//                o.put(PENDING_AUTHS, pendingAuths);
-//            }
-//            return o;
-//        }
-//
-//        o.put(SECRET, new String(new Base32().encode(t.getSecret())));
-//        o.put(DIGITS, t.getDigits());
-//        o.put(ALGORITHM, t.getAlgorithm());
-//
-//        if (t.getType().equals(HOTP)) {
-//            o.put(COUNTER, t.getCounter());
-//        }
-//        if (t.getType().equals(TOTP)) {
-//            o.put(PERIOD, t.getPeriod());
-//        }
-//        if (t.isWithPIN()) {
-//            o.put(WITHPIN, true);
-//            o.put(PIN, t.getPin());
-//        } else {
-//            o.put(WITHPIN, false);
-//        }
-//        if (t.isWithTapToShow()) {
-//            o.put(TAPTOSHOW, true);
-//        }
-//        if (t.isPersistent()) {
-//            o.put(PERSISTENT, true);
-//        }
-//        return o;
-//    }
-
-//    public void storePIPubkey(String key, String serial) throws GeneralSecurityException, IllegalArgumentException, IOException {
-//        byte[] keybytes = decodeBase64(key);
-//
-//        PublicKey pubkey = PKCS1ToSubjectPublicKeyInfo.decodePKCS1PublicKey(keybytes);
-//        if (saveToFile(serial + "_" + PUBKEYFILE, pubkey.getEncoded())) {
-//            logprint("pubkey for " + serial + " saved.");
-//        }
-//
-//        // this code is expecting pkcs8
-//        /*X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keybytes);
-//        KeyFactory kf = KeyFactory.getInstance("RSA");
-//        PublicKey pubkey = kf.generatePublic(keySpec); */
-//    }
 
     public PublicKey getPIPubkey(String serial) throws GeneralSecurityException, IOException {
         if (baseFilePath == null) return null;
@@ -286,33 +154,10 @@ public class Util {
         }
     }
 
-//    /**
-//     * @return FirebaseInitConfig object or null if there is no config / error
-//     */
-//    public FirebaseInitConfig loadFirebaseConfig() throws IOException, GeneralSecurityException, JSONException {
-//        logprint("Loading Firebase config...");
-//        byte[] data = loadDataFromFile(FB_CONFIG_FILE);
-//        if (data == null) {
-//            logprint("Firebase config not found!");
-//            return null;
-//        }
-//
-//        JSONObject o = new JSONObject(new String(data));
-//        String projID = o.getString(PROJECT_ID);
-//        String appID = o.getString(APP_ID);
-//        String api_key = o.getString(API_KEY);
-//        String projNumber = o.getString(PROJECT_NUMBER);
-//
-//        //logprint("Firebase config loaded.");
-//        return new FirebaseInitConfig(projID, appID, api_key, projNumber);
-//    }
-
-    private static byte[] encrypt(SecretKey secretKey, GCMParameterSpec iv, byte[] plainText)
-            throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-            InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        Cipher cipher = Cipher.getInstance(CRYPT_ALGORITHM);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
-        return cipher.doFinal(plainText);
+    public String loadFirebaseConfig() throws IOException, GeneralSecurityException {
+        byte[] data = loadDataFromFile(FB_CONFIG_FILE);
+        if (data == null) return null;
+        else return new String(data);
     }
 
     private static byte[] decrypt(SecretKey secretKey, GCMParameterSpec iv, byte[] cipherText)
@@ -322,19 +167,6 @@ public class Util {
         cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
         return cipher.doFinal(cipherText);
     }
-
-//    static byte[] encrypt(SecretKey secretKey, byte[] plaintext)
-//            throws NoSuchPaddingException, BadPaddingException, InvalidKeyException, NoSuchAlgorithmException,
-//            IllegalBlockSizeException, InvalidAlgorithmParameterException {
-//        final byte[] iv = new byte[IV_LENGTH];
-//        new SecureRandom().nextBytes(iv);
-//        GCMParameterSpec params = new GCMParameterSpec(128, iv, 0, 12);
-//        byte[] cipherText = encrypt(secretKey, params, plaintext);
-//        byte[] combined = new byte[iv.length + cipherText.length];
-//        System.arraycopy(iv, 0, combined, 0, iv.length);
-//        System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
-//        return combined;
-//    }
 
     static byte[] decrypt(SecretKey secretKey, byte[] cipherText)
             throws NoSuchPaddingException, InvalidKeyException, NoSuchAlgorithmException, IllegalBlockSizeException,

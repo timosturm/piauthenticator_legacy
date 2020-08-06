@@ -30,10 +30,10 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     private static final String METHOD_SIGN = "sign";
     private static final String METHOD_VERIFY = "verify";
     private static final String METHOD_LOAD_ALL_TOKENS = "load_all_tokens";
+    private static final String METHOD_LOAD_FIREBASE_CONFIG = "load_firebase_config";
 
     private Util util;
     private SecretKeyWrapper secretKeyWrapper;
-    private Context applicationContext;
 
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
@@ -42,10 +42,7 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
 
-        this.applicationContext = applicationContext;
         channel = new MethodChannel(messenger, METHOD_CHANNEL_ID);
-//        eventChannel = new EventChannel(messenger, "plugins.flutter.io/charging");
-//        eventChannel.setStreamHandler(this); // TODO What is this good for?
         channel.setMethodCallHandler(this);
 
         try {
@@ -60,11 +57,8 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
 
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
-        applicationContext = null;
         channel.setMethodCallHandler(null);
         channel = null;
-//        eventChannel.setStreamHandler(null);
-//        eventChannel = null;
     }
 
     // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -77,8 +71,6 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     // depending on the user's project. onAttachedToEngine or registerWith must both be defined
     // in the same class.
     public static void registerWith(Registrar registrar) {
-//        final MethodChannel channel = new MethodChannel(registrar.messenger(), METHOD_CHANNEL_ID);
-//        channel.setMethodCallHandler(new PrivacyideaAppLegacyPlugin());
         final PrivacyideaAppLegacyPlugin instance = new PrivacyideaAppLegacyPlugin();
         instance.onAttachedToEngine(registrar.context(), registrar.messenger());
     }
@@ -87,14 +79,26 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
 
         switch (call.method) {
-            case "getPlatformVersion":
+            case "getPlatformVersion": // TODO Remove this method call.
                 result.success("Android " + android.os.Build.VERSION.RELEASE);
                 break;
             case METHOD_SIGN: // TODO implement
+
             case METHOD_VERIFY: // TODO implement
+                result.success(true);
+                break;
             case METHOD_LOAD_ALL_TOKENS:
                 try {
                     result.success(util.loadTokens());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (GeneralSecurityException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case METHOD_LOAD_FIREBASE_CONFIG:
+                try {
+                    result.success(util.loadFirebaseConfig());
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (GeneralSecurityException e) {

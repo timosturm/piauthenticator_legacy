@@ -6,6 +6,7 @@ const String METHOD_CHANNEL_ID = "it.netknights.piauthenticator.legacy";
 const String METHOD_SIGN = "sign";
 const String METHOD_VERIFY = "verify";
 const String METHOD_LOAD_ALL_TOKENS = "load_all_tokens";
+const String METHOD_LOAD_FIREBASE_CONFIG = "load_firebase_config";
 
 class Legacy {
   static const MethodChannel _channel = const MethodChannel(METHOD_CHANNEL_ID);
@@ -30,4 +31,7 @@ class Legacy {
 
   static Future<String> loadAllTokens() async =>
       await _channel.invokeMethod(METHOD_LOAD_ALL_TOKENS);
+
+  static Future<String> loadFirebaseConfig() async =>
+      await _channel.invokeMethod(METHOD_LOAD_FIREBASE_CONFIG);
 }
