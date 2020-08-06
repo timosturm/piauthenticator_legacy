@@ -46,7 +46,7 @@ dependencies {
 //    implementation 'org.mockito:mockito-core:1.10.19'
 //    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 //    implementation 'androidx.vectordrawable:vectordrawable:1.1.0'
-//    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'com.google.code.gson:gson:2.8.6'
 //
 //    implementation 'com.google.firebase:firebase-core:17.4.0'
 //    implementation 'com.google.firebase:firebase-messaging:20.1.6'

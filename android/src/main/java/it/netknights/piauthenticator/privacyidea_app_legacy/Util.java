@@ -28,27 +28,41 @@ package it.netknights.piauthenticator.privacyidea_app_legacy;
 import android.util.Base64;
 import android.util.Log;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import org.apache.commons.codec.binary.Base32;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
 import java.security.spec.X509EncodedKeySpec;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
@@ -58,14 +72,38 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.ALGORITHM;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.COUNTER;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.CRYPT_ALGORITHM;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.DATAFILE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.DIGITS;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.ENROLLMENT_CRED;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.FB_CONFIG_FILE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.HOTP;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.IV_LENGTH;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.KEYFILE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.LABEL;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PENDING_AUTHS;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PERIOD;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PERSISTENT;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PIN;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PUBKEYFILE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.PUSH;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.ROLLOUT_EXPIRATION;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.ROLLOUT_STATE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.SECRET;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.SERIAL;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.SIGNING_ALGORITHM;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.SSL_VERIFY;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.State.AUTHENTICATING;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.State.FINISHED;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.State.UNFINISHED;
 import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.TAG;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.TAPTOSHOW;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.TOTP;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.TYPE;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.URL;
+import static it.netknights.piauthenticator.privacyidea_app_legacy.AppConstants.WITHPIN;
 
 public class Util {
 
@@ -83,13 +121,7 @@ public class Util {
 
     // TODO Rewrite
 
-    /**
-     * This Method loads the encrypted saved tokens, in the progress the Secret Key is unwrapped
-     * and used to decrypt the saved tokens
-     *
-     * @return An ArrayList of Tokens
-     */
-    public String loadTokens() throws IOException, GeneralSecurityException {
+    public String loadTokensJSON() throws IOException, GeneralSecurityException {
         logprint("LOADING TOKEN");
         byte[] data = loadDataFromFile(DATAFILE);
         return new String(data);
@@ -248,6 +280,32 @@ public class Util {
         return sig.verify(bSignature);
     }
 
+    public boolean verifySignature(String serial, String signature, String payload) throws GeneralSecurityException, IOException {
+        if (!new Base32().isInAlphabet(signature)) {
+            logprint("verifySignature: The given signature is not Base32 encoded!");
+            return false;
+        }
+
+        byte[] message = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] bSignature = new Base32().decode(signature);
+        Signature sig = Signature.getInstance(SIGNING_ALGORITHM);
+
+        sig.initVerify(this.getPIPubkey(serial));
+        sig.update(message);
+        return sig.verify(bSignature);
+    }
+
+    public String sign(String serial, String message) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, CertificateException, UnrecoverableEntryException, KeyStoreException, IOException {
+        byte[] bMessage = message.getBytes(StandardCharsets.UTF_8);
+
+        Signature s = Signature.getInstance(SIGNING_ALGORITHM);
+        s.initSign(secretKeyWrapper.getPrivateKeyFor(serial));
+        s.update(bMessage);
+
+        byte[] signature = s.sign();
+        return new Base32().encodeAsString(signature);
+    }
+
     public byte[] decodeBase64(String key) {
         return Base64.decode(key, Base64.DEFAULT);
     }
@@ -304,5 +362,230 @@ public class Util {
             index += stepSize;
         }
         return builder.toString();
+    }
+
+
+    /**
+     * This Method loads the encrypted saved tokens, in the progress the Secret Key is unwrapped
+     * and used to decrypt the saved tokens
+     *
+     * @return An ArrayList of Tokens
+     */
+    public ArrayList<Token> loadTokens() throws IOException, GeneralSecurityException {
+        logprint("LOADING TOKEN");
+        ArrayList<Token> tokens = new ArrayList<>();
+        try {
+            byte[] data = loadDataFromFile(DATAFILE);
+            if (data == null) {
+                return null;
+            }
+            JSONArray a = new JSONArray(new String(data));
+            for (int i = 0; i < a.length(); i++) {
+                tokens.add(makeTokenFromJSON(a.getJSONObject(i)));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return tokens;
+    }
+
+    /**
+     * Encrypt and save the ArrayList of tokens with a Secret Key, which is wrapped by a Public Key
+     * that is stored in the Keystore
+     *
+     * @param tokens ArrayList of tokens to save
+     */
+    public void saveTokens(ArrayList<Token> tokens) throws GeneralSecurityException, IOException {
+        if (tokens == null) {
+            return;
+        }
+        JSONArray tmp = new JSONArray();
+        for (Token t : tokens) {
+            try {
+                tmp.put(makeJSONfromToken(t));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (saveToFile(DATAFILE, tmp.toString().getBytes())) {
+            logprint("Tokenlist saved.");
+        }
+    }
+
+    private Token makeTokenFromJSON(JSONObject o) throws JSONException {
+        //Log.d("LOAD TOKEN FROM: ", o.toString());
+
+        // when no serial is found (for "old" data) it is set to the label
+        String serial;
+        String label = o.getString(LABEL);
+        try {
+            serial = o.getString(SERIAL);
+        } catch (JSONException e) {
+            serial = label;
+        }
+        String type = o.getString(TYPE);
+
+        if (type.equals(PUSH)) {
+            Token t = new Token(serial, label);
+            t.state = AppConstants.State.valueOf(o.getString(ROLLOUT_STATE));
+            if (t.state.equals(UNFINISHED)) {
+                t.rollout_url = o.getString(URL);
+                t.enrollment_credential = o.getString(ENROLLMENT_CRED);
+                t.sslVerify = o.getBoolean(SSL_VERIFY);
+                try {
+                    t.rollout_expiration = dateFormat.parse(o.getString(ROLLOUT_EXPIRATION));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+            // Check for pending Authentication Requests
+            try {
+                String pendingAuths = o.getString(PENDING_AUTHS);
+                t.setPendingAuths((ArrayList<PushAuthRequest>) new Gson().fromJson(pendingAuths,
+                        new TypeToken<ArrayList<PushAuthRequest>>() {
+                        }.getType()));
+            } catch (JSONException e) {
+                // there were none and that's ok
+            }
+            return t;
+        }
+
+        Token tmp = new Token(new Base32().decode(o.getString(SECRET)), serial, label,
+                type, o.getInt(DIGITS));
+
+        tmp.setAlgorithm(o.getString(ALGORITHM));
+        if (o.getString(TYPE).equals(HOTP)) {
+            tmp.setCounter(o.getInt(COUNTER));
+        }
+        if (o.getString(TYPE).equals(TOTP)) {
+            tmp.setPeriod(o.getInt(PERIOD));
+        }
+        if (o.optBoolean(WITHPIN, false)) {
+            tmp.setWithPIN(true);
+            tmp.setPin(o.getString(PIN));
+            tmp.setLocked(true);
+        }
+        if (o.optBoolean(TAPTOSHOW, false)) {
+            tmp.setWithTapToShow(true);
+        }
+        if (o.optBoolean(PERSISTENT)) {
+            tmp.setPersistent(true);
+        }
+
+        return tmp;
+    }
+
+    private JSONObject makeJSONfromToken(Token t) throws JSONException {
+        JSONObject o = new JSONObject();
+
+        o.put(SERIAL, t.getSerial());
+        o.put(LABEL, t.getLabel());
+        o.put(TYPE, t.getType());
+
+        if (t.getType().equals(PUSH)) {
+            AppConstants.State state = t.state;
+            if (state.equals(AUTHENTICATING)) {
+                // Don't save authenticating state, has to be finished
+                // Unfinished token cannot authenticate
+                state = FINISHED;
+            }
+            o.put(ROLLOUT_STATE, state);
+            // If the rollout is not finished yet, save the data necessary to complete it
+            if (t.state.equals(UNFINISHED)) {
+                o.put(URL, t.rollout_url);
+                o.put(ROLLOUT_EXPIRATION, dateFormat.format(t.rollout_expiration));
+                o.put(ENROLLMENT_CRED, t.enrollment_credential);
+                o.put(SSL_VERIFY, t.sslVerify);
+            }
+
+            // Check for pending Authentication Requests
+            if (!t.getPendingAuths().isEmpty()) {
+                String pendingAuths = new Gson().toJson(t.getPendingAuths());
+                o.put(PENDING_AUTHS, pendingAuths);
+            }
+            return o;
+        }
+
+        o.put(SECRET, new String(new Base32().encode(t.getSecret())));
+        o.put(DIGITS, t.getDigits());
+        o.put(ALGORITHM, t.getAlgorithm());
+
+        if (t.getType().equals(HOTP)) {
+            o.put(COUNTER, t.getCounter());
+        }
+        if (t.getType().equals(TOTP)) {
+            o.put(PERIOD, t.getPeriod());
+        }
+        if (t.isWithPIN()) {
+            o.put(WITHPIN, true);
+            o.put(PIN, t.getPin());
+        } else {
+            o.put(WITHPIN, false);
+        }
+        if (t.isWithTapToShow()) {
+            o.put(TAPTOSHOW, true);
+        }
+        if (t.isPersistent()) {
+            o.put(PERSISTENT, true);
+        }
+        return o;
+    }
+
+    /**
+     * Encrypt and save the given data in the specified file and baseFilePath.
+     * baseFilePath + "/" + fileName
+     *
+     * @param fileName     Name of the file to save to
+     * @param baseFilePath Path to the app's data storage
+     * @param data         Data to save
+     * @return true if successful, false if error
+     */
+    private boolean saveToFile(String fileName, String baseFilePath, byte[] data) throws GeneralSecurityException, IOException {
+        SecretKey key = getSecretKey(new File(baseFilePath + "/" + KEYFILE));
+        data = encrypt(key, data);
+        writeFile(new File(baseFilePath + "/" + fileName), data);
+        return true;
+    }
+
+    /**
+     * Encrypt and save the given data in the specified file.
+     * baseFilePath + "/" + fileName
+     *
+     * @param fileName Name of the file to save to
+     * @param data     Data to save
+     * @return true if successful, false if error
+     */
+    public boolean saveToFile(String fileName, byte[] data) throws GeneralSecurityException, IOException {
+        if (baseFilePath == null) return false;
+        return saveToFile(fileName, baseFilePath, data);
+    }
+
+
+    private static byte[] encrypt(SecretKey secretKey, GCMParameterSpec iv, byte[] plainText)
+            throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+            InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        Cipher cipher = Cipher.getInstance(CRYPT_ALGORITHM);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
+        return cipher.doFinal(plainText);
+    }
+
+    static byte[] encrypt(SecretKey secretKey, byte[] plaintext)
+            throws NoSuchPaddingException, BadPaddingException, InvalidKeyException, NoSuchAlgorithmException,
+            IllegalBlockSizeException, InvalidAlgorithmParameterException {
+        final byte[] iv = new byte[IV_LENGTH];
+        new SecureRandom().nextBytes(iv);
+        GCMParameterSpec params = new GCMParameterSpec(128, iv, 0, 12);
+        byte[] cipherText = encrypt(secretKey, params, plaintext);
+        byte[] combined = new byte[iv.length + cipherText.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
+        return combined;
+    }
+
+    private void writeFile(File file, byte[] data) throws IOException {
+        try (OutputStream out = new FileOutputStream(file)) {
+            out.write(data);
+        }
     }
 }

@@ -6,6 +6,12 @@ import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.security.InvalidKeyException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
@@ -32,6 +38,11 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     private static final String METHOD_LOAD_ALL_TOKENS = "load_all_tokens";
     private static final String METHOD_LOAD_FIREBASE_CONFIG = "load_firebase_config";
 
+    private static final String PARAMETER_SERIAL = "serial";
+    private static final String PARAMETER_MESSAGE = "message";
+    private static final String PARAMETER_SIGNED_DATA = "signedData";
+    private static final String PARAMETER_SIGNATURE = "signature";
+
     private Util util;
     private SecretKeyWrapper secretKeyWrapper;
 
@@ -48,15 +59,13 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
         try {
             secretKeyWrapper = new SecretKeyWrapper(applicationContext);
             util = new Util(secretKeyWrapper, applicationContext.getFilesDir().getAbsolutePath());
-        } catch (GeneralSecurityException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (GeneralSecurityException | IOException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void onDetachedFromEngine(FlutterPluginBinding binding) {
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
         channel.setMethodCallHandler(null);
         channel = null;
     }
@@ -79,29 +88,41 @@ public class PrivacyideaAppLegacyPlugin implements FlutterPlugin, MethodCallHand
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
 
         switch (call.method) {
-            case "getPlatformVersion": // TODO Remove this method call.
-                result.success("Android " + android.os.Build.VERSION.RELEASE);
-                break;
             case METHOD_SIGN: // TODO implement
+                // [serial, message]
+                String s1 = call.argument(PARAMETER_SERIAL);
+                String message = call.argument(PARAMETER_MESSAGE);
+
+                try {
+                    result.success(util.sign(s1, message));
+                } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | IOException | CertificateException | UnrecoverableEntryException | KeyStoreException e) {
+                    e.printStackTrace();
+                }
+
 
             case METHOD_VERIFY: // TODO implement
-                result.success(true);
-                break;
+                // [serial, signedData, signature]
+                String s2 = call.argument(PARAMETER_SERIAL);
+                String signedData = call.argument(PARAMETER_SIGNED_DATA);
+                String signature = call.argument(PARAMETER_SIGNATURE);
+
+                try {
+                    result.success(util.verifySignature(s2, signature, signedData));
+                } catch (GeneralSecurityException | IOException e) {
+                    e.printStackTrace();
+                }
+
             case METHOD_LOAD_ALL_TOKENS:
                 try {
-                    result.success(util.loadTokens());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (GeneralSecurityException e) {
+                    result.success(util.loadTokensJSON());
+                } catch (IOException | GeneralSecurityException e) {
                     e.printStackTrace();
                 }
                 break;
             case METHOD_LOAD_FIREBASE_CONFIG:
                 try {
                     result.success(util.loadFirebaseConfig());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (GeneralSecurityException e) {
+                } catch (IOException | GeneralSecurityException e) {
                     e.printStackTrace();
                 }
                 break;
